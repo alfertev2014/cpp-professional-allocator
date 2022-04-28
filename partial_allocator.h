@@ -1,7 +1,51 @@
 #pragma once
 
-#include <array>
+#include <vector>
 #include <iostream>
+
+/**
+ * Grow-only byte buffer
+ */
+struct BytesAllocator {
+    explicit BytesAllocator(std::size_t size) {
+        m_buffer.resize(size); // allocate buffer in free store
+    }
+
+    void *allocateBytes(std::size_t size) {
+        auto res = tryAllocateBytes(size);
+        if (!res) {
+            throw std::bad_alloc{};
+        }
+        return res;
+    }
+
+    // may return nullptr
+    void *tryAllocateBytes(std::size_t size) {
+        if (size > m_buffer.size() - bytesAllocated) {
+            return nullptr;
+        }
+        void *res = m_buffer.data() + bytesAllocated;
+        bytesAllocated += size;
+        return res;
+    }
+
+    void deallocateBytes(void* p, std::size_t size) {
+        if (p) {
+            // If data are at the end of buffer, we can make it free back.
+            // ATTENTION!!! We assume that size equals the value passed corresponding call of allocateBytes
+            // In more robust implementations (tolerant to double free errors) we should add control block into every allocation
+            if (reinterpret_cast<unsigned char *>(p) + size == m_buffer.data() + bytesAllocated) {
+                bytesAllocated -= size;
+            }
+        }
+    }
+
+    std::size_t size() const { return bytesAllocated; }
+    std::size_t sizeReserved() const {return m_buffer.size(); }
+private:
+    std::vector<unsigned char> m_buffer;
+    std::size_t bytesAllocated;
+};
 
 /**
  * Example of partial implementation of allocator
@@ -29,7 +73,7 @@ struct MyAllocator {
     };
 
     T* allocate (std::size_t n) {
-        auto p = allocateBytes(n * sizeof(T));
+        auto p = bytesAllocator.tryAllocateBytes(n * sizeof(T));
         if (!p) {
             throw std::bad_alloc();
         }
@@ -37,42 +81,14 @@ struct MyAllocator {
     }
 
     void deallocate (T* p, std::size_t n) {
-        deallocateBytes(p, n * sizeof(T));
+        bytesAllocator.deallocateBytes(p, n * sizeof(T));
     }
 private:
-    // Use raw byte buffer because we will not call constructor of T elements right away.
-    static std::array<unsigned char, sizeof(T) * SIZE> m_buffer;
-    static std::size_t bytesAllocated;
-
-    static void *allocateBytes(std::size_t size) {
-        std::cout << "allocate " << size << std::endl;
-        if (size > m_buffer.size() - bytesAllocated) {
-            throw std::bad_alloc{};
-        }
-        void *res = m_buffer.data() + bytesAllocated;
-        bytesAllocated += size;
-        return res;
-    }
-
-    static void deallocateBytes(T* p, std::size_t size) {
-        std::cout << "deallocate " << size << std::endl;
-        if (p) {
-            // If data are at the end of buffer, we can make it free back.
-            // ATTENTION!!! We assume that size equals the value passed corresponding call of allocateBytes
-            // In more robust implementations (tolerant to doublefree) we should add control block in every allocation
-            unsigned char *bytes = reinterpret_cast<unsigned char *>(reinterpret_cast<void *>(p));
-            if (bytes + size == m_buffer.data() + bytesAllocated) {
-                bytesAllocated -= size;
-                std::cout << "deallocate last" << std::endl;
-            }
-        }
-    }
+    static BytesAllocator bytesAllocator;
 };
 
 template <typename T, std::size_t SIZE>
-std::array<unsigned char, sizeof(T) * SIZE> MyAllocator<T, SIZE>::m_buffer;
-template <typename T, std::size_t SIZE>
-std::size_t MyAllocator<T, SIZE>::bytesAllocated;
+BytesAllocator MyAllocator<T, SIZE>::bytesAllocator(sizeof(T) * SIZE);
 
 
 
