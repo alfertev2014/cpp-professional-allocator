@@ -1,9 +1,6 @@
 #pragma once
 
-#define USE_PRETTY 1
-#include "pretty.h"
-
-#include <iostream>
+#include "bytes_allocator.h"
 
 /**
  * Example of full implementation of allocator.
@@ -31,27 +28,30 @@ struct FullAllocator {
     }
 
     T *allocate(std::size_t n) {
-        std::cout << pretty_function << "[n = " << n << "]" << std::endl;
-        auto p = std::malloc(n * sizeof(T));
-        if (!p)
+        auto p = bytesAllocator.tryAllocateBytes(n * sizeof(T));
+        if (!p) {
             throw std::bad_alloc();
+        }
         return reinterpret_cast<T *>(p);
+
     }
 
     void deallocate(T *p, std::size_t n) {
-        std::cout << pretty_function  << "[n = " << n << "]" << std::endl;
-        std::free(p);
+        bytesAllocator.deallocateBytes(p, n * sizeof(T));
     }
 
     template<typename U, typename ...Args>
     void construct(U *p, Args &&...args) {
-        std::cout << pretty_function << std::endl;
         new(p) U(std::forward<Args>(args)...);
     };
 
     void destroy(T *p) {
-        std::cout << pretty_function << std::endl;
         p->~T();
     }
+private:
+    static BytesAllocator bytesAllocator;
 };
+
+template <typename T, std::size_t SIZE>
+BytesAllocator FullAllocator<T, SIZE>::bytesAllocator(sizeof(T) * SIZE);
 
