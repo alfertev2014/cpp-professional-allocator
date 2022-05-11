@@ -3,17 +3,25 @@
 #include "full_allocator.h"
 #include "logging_allocator_mixin.h"
 
-#include <vector>
+#include <map>
+
+int factorial(int i) {
+    int res = i > 0 ? i : 1;
+    for (; i>0; --i) {
+        res *= i;
+    }
+    return res;
+}
 
 int main() {
-    std::vector<int, logging_allocator_mixin<int, PartialAllocator<int, 100>>> v_partial;
+    std::map<int, int, std::less<int>, with_logging_allocator<PartialAllocator<std::pair<const int, int>, 10>>> map_partial;
     for (int i = 0; i < 10; ++i) {
-        v_partial.push_back(i);
+        map_partial[i] = factorial(i);
     }
 
-    std::vector<int, logging_allocator_mixin<int, FullAllocator<int, 100>>> v_full;
+    std::map<int, int, std::less<int>, with_logging_allocator<FullAllocator<std::pair<const int, int>, 10>>> map_full;
     for (int i = 0; i < 10; ++i) {
-        v_full.push_back(i);
+        map_full[i] = factorial(i);
     }
 
     return 0;

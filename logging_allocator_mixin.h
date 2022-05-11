@@ -4,28 +4,38 @@
 #include "pretty.h"
 
 #include <iostream>
+#include <memory>
 
 template<typename T, typename Allocator = std::allocator<T>>
-struct logging_allocator_mixin {
+struct logging_allocator_mixin : public Allocator {
     using value_type = typename Allocator::value_type;
+    using al_traits = std::allocator_traits<Allocator>;
 
     logging_allocator_mixin() = default;
     ~logging_allocator_mixin() = default;
 
+    template<class U>
+    struct rebind   // we cannot get rid of this :(
+    {
+        using other = logging_allocator_mixin<U, typename al_traits::template rebind_alloc<U>>;
+    };
+
     template<typename U>
-    logging_allocator_mixin(const logging_allocator_mixin<U, Allocator>&) {
+    logging_allocator_mixin(const logging_allocator_mixin<U, typename al_traits::template rebind_alloc<U>>&) {
 
     }
 
-    T *allocate(std::size_t n) {
+    typename al_traits::pointer allocate(std::size_t n) {
         std::cout << pretty_function << "[n = " << n << "]" << std::endl;
-        return allocator.allocate(n);
+        return Allocator::allocate(n);
     }
 
-    void deallocate(T *p, std::size_t n) {
+    void deallocate(typename al_traits::pointer p, std::size_t n) {
         std::cout << pretty_function  << "[n = " << n << "]" << std::endl;
-        allocator.deallocate(p, n);
+        Allocator::deallocate(p, n);
     }
-private:
-    Allocator allocator;
+
 };
+
+template<typename Allocator>
+using with_logging_allocator = logging_allocator_mixin<typename Allocator::value_type, Allocator>;

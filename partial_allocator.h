@@ -2,6 +2,8 @@
 
 #include "bytes_allocator.h"
 
+#include <iostream>
+
 /**
  * Example of partial implementation of allocator
  * to be used with std::allocator_traits
@@ -49,7 +51,7 @@ BytesAllocator PartialAllocator<T, SIZE>::bytesAllocator(sizeof(T) * SIZE);
 
 template <std::size_t SIZE, class T, class U>
 constexpr bool operator== (const PartialAllocator<T, SIZE>&, const PartialAllocator<U, SIZE>&) noexcept {
-    return false;
+    return true;
 }
 
 template <std::size_t SIZE, class T, class U>
