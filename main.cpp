@@ -2,6 +2,7 @@
 #include "partial_allocator.h"
 #include "full_allocator.h"
 #include "logging_allocator_mixin.h"
+#include "sequence_container.h"
 
 #include <map>
 
@@ -23,6 +24,10 @@ int main() {
     for (int i = 0; i < 10; ++i) {
         map_full[i] = factorial(i);
     }
+
+    SequenceContainer<int> sq;
+    sq.push_back(1);
+    sq.push_back({ 2, 3 });
 
     return 0;
 }
